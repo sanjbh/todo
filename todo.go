@@ -16,6 +16,25 @@ type item struct {
 
 type List []item
 
+type String interface {
+	String() string
+}
+
+const TodoFileName = ".todo.json"
+
+func (l *List) String() string {
+	formatted := ""
+
+	for k, t := range *l {
+		prefix := " "
+		if t.Done {
+			prefix = "X "
+		}
+		formatted += fmt.Sprintf("%s%d: %s\n", prefix, k+1, t.Task)
+	}
+	return formatted
+}
+
 func (l *List) Add(task string) {
 	t := item{
 		Task:        task,
@@ -27,14 +46,27 @@ func (l *List) Add(task string) {
 
 }
 
+func NewList() (*List, error) {
+	l := &List{}
+
+	if err := l.Get(TodoFileName); err != nil {
+		if os.IsNotExist(err) {
+			return l, nil
+		}
+		return nil, err
+	}
+	return l, nil
+}
+
 func (l *List) Complete(i int) error {
-	ls := *l
-	if i <= 0 || i > len(ls) {
+
+	if i <= 0 || i > len(*l) {
 		return fmt.Errorf("Item %d does not exist", i)
 	}
 
-	ls[i-1].Done = true
-	ls[i-1].CompletedAt = time.Now()
+	// Mark the item as complete directly on the receiver
+	(*l)[i-1].Done = true
+	(*l)[i-1].CompletedAt = time.Now()
 
 	return nil
 }
@@ -53,15 +85,15 @@ func (l *List) Delete(i int) error {
 }
 
 func (l *List) Save(filename string) error {
+
 	b, err := json.Marshal(l)
 	if err != nil {
 		return err
 	}
 
-	if err = os.WriteFile(filename, b, 0600); err != nil {
+	if err = os.WriteFile(filename, b, 0644); err != nil {
 		return err
 	}
-
 	return nil
 }
 
